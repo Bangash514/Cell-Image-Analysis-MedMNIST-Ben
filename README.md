@@ -1,53 +1,50 @@
-# Cell-Image-Analysis-MedMNIST-Ben
+# Blood Cell Image Analysis: Classical Vision vs Transfer Learning
 
-**Blood cell image classification: classical image processing vs deep transfer learning**
+A small, reproducible learning project on **BloodMNIST** (public microscope images of blood cells, 8 classes).
+It compares a classical image-processing pipeline with a deep-learning transfer-learning model, using the same train/val/test split.
 
-A small, reproducible biomedical image analysis project on **BloodMNIST**, a public set of microscope images of blood cells (8 classes, 64x64 RGB). It compares a classical pipeline (segmentation + handcrafted features + Random Forest) with a fine-tuned MobileNetV2 on the same official train/val/test split.
+> **Status:** code is complete. The result numbers below are filled in from my own runs (see *Results*). Nothing here is clinical software, and no patient, hospital or employer data is used.
 
-> Learning and portfolio project on a public dataset. It is not clinical software. No patient, hospital or employer data is used.
-
-## Pipeline
-| Step | Script | What it does |
+## What it does
+| Step | Script | Content |
 |---|---|---|
-| 1 | `src/01_explore_preprocess.py` | Class balance, example images per class, CLAHE + Gaussian + Otsu preprocessing demo |
-| 2 | `src/02_classical_features.py` | Otsu segmentation, shape / colour / LBP texture features, Random Forest (balanced class weights) |
-| 3 | `src/03_transfer_learning.py` | MobileNetV2 (ImageNet weights) with augmentation: frozen head, then partial fine-tuning (TensorFlow/Keras) |
+| 1 | `src/01_explore_preprocess.py` | class balance, example images, CLAHE + Gaussian + Otsu preprocessing demo |
+| 2 | `src/02_classical_features.py` | Otsu segmentation, shape/colour/texture (LBP) features, Random Forest |
+| 3 | `src/03_transfer_learning.py` | MobileNetV2 (ImageNet) with augmentation, frozen then fine-tuned (TensorFlow/Keras) |
 
-Metrics are test accuracy and **macro-F1** (the classes are imbalanced), plus confusion matrices.
+Metrics: accuracy and macro-F1 on the official test split, plus confusion matrices. Macro-F1 is reported because classes are imbalanced.
 
-## Quick start
+## Run
 ```bash
-git clone https://github.com/Bangash514/Cell-Image-Analysis-MedMNIST-Ben.git
-cd Cell-Image-Analysis-MedMNIST-Ben
 pip install -r requirements.txt
-pip install tensorflow            # only for step 3
+pip install tensorflow          # only needed for step 3
 cd src
 python 01_explore_preprocess.py
 python 02_classical_features.py
-python 03_transfer_learning.py    # GPU recommended (Google Colab / Kaggle)
+python 03_transfer_learning.py  # free GPU on Google Colab / Kaggle recommended
 ```
-The dataset downloads automatically on the first run. Outputs are written to `results/`.
+Figures and metric files are written to `results/`. The dataset downloads automatically on first run.
 
 ## Results
+Fill these in after running (copy from `results/metrics_*.txt`):
+
 | Model | Test accuracy | Macro-F1 |
 |---|---|---|
-| Classical features + Random Forest | TODO | TODO |
-| MobileNetV2 transfer learning | TODO | TODO |
+| Classical features + Random Forest | _TODO_ | _TODO_ |
+| MobileNetV2 transfer learning | _TODO_ | _TODO_ |
 
-Figures in `results/`: `class_balance.png`, `examples.png`, `preprocessing_demo.png`, `confusion_classical.png`, `confusion_transfer.png`, `training_curve.png`.
+Figures: `results/class_balance.png`, `results/examples.png`, `results/preprocessing_demo.png`, `results/confusion_classical.png`, `results/confusion_transfer.png`, `results/training_curve.png`.
 
-Observations:** TODO (one or two sentences on what you saw, e.g. which classes are confused most).
-
-## Limitations
-- 64x64 images limit the detail available to segmentation and texture features.
-- The official split is used and test data is not used for tuning.
+## Notes / limitations
+- Images are 64x64, so segmentation features are coarse; this is a learning benchmark, not a diagnostic tool.
+- The official split is used; no test data is used for tuning.
 - Seeds are fixed, but GPU runs can vary slightly.
 
-## Data and references
-- Dataset: BloodMNIST from MedMNIST v2, https://medmnist.com (CC BY 4.0; please cite the papers below).
+## Data and citations
+- Dataset: BloodMNIST from MedMNIST v2, https://medmnist.com (check the dataset licence, CC BY 4.0, and cite properly).
 - Yang J. et al., *MedMNIST v2: A large-scale lightweight benchmark for 2D and 3D biomedical image classification*, Scientific Data, 2023.
-- Acevedo A. et al., *A dataset of microscopic peripheral blood cell images for development of automatic recognition systems*, Data in Brief, 2020.
+- Original blood-cell data: Acevedo A. et al., *A dataset of microscopic peripheral blood cell images for development of automatic recognition systems*, Data in Brief, 2020.
 - Libraries: scikit-image, scikit-learn, TensorFlow/Keras, MedMNIST.
 
 ## Author
-BEN, Software Engineer. GitHub: [Bangash514](https://github.com/Bangash514)
+BEN, Software Engineer (GitHub: Bangash514)
