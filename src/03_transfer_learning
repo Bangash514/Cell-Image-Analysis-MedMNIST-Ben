@@ -1,0 +1,67 @@
+# BEN 2026-11-01
+# Change aim: Classify blood cells with a fine-tuned MobileNetV2 model.
+# File: 03_transfer_learning.py
+"""Step 3: transfer learning (MobileNetV2, ImageNet weights) with TensorFlow/Keras.
+
+Run on Colab/Kaggle (free GPU) if your laptop is slow:  pip install tensorflow
+Images are 64x64 in MedMNIST; they are upsampled to 96x96 for the pretrained backbone.
+"""
+import os
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
+from common import load_split, CLASS_NAMES
+
+os.makedirs("results", exist_ok=True)
+tf.keras.utils.set_random_seed(0)
+
+X_tr, y_tr = load_split("train")
+X_va, y_va = load_split("val")
+X_te, y_te = load_split("test")
+
+base = tf.keras.applications.MobileNetV2(input_shape=(96, 96, 3), include_top=False, weights="imagenet")
+base.trainable = False
+inp = tf.keras.Input(shape=(64, 64, 3))
+x = tf.keras.layers.Resizing(96, 96)(inp)
+x = tf.keras.layers.RandomFlip("horizontal_and_vertical")(x)
+x = tf.keras.layers.RandomRotation(0.1)(x)
+x = tf.keras.layers.Rescaling(1.0 / 127.5, offset=-1)(x)
+x = base(x, training=False)
+x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Dropout(0.3)(x)
+out = tf.keras.layers.Dense(len(CLASS_NAMES), activation="softmax")(x)
+model = tf.keras.Model(inp, out)
+model.compile(tf.keras.optimizers.Adam(1e-3), "sparse_categorical_crossentropy", ["accuracy"])
+
+h1 = model.fit(X_tr, y_tr, validation_data=(X_va, y_va), epochs=5, batch_size=64, verbose=2)
+
+# fine-tune the top of the backbone with a small learning rate
+base.trainable = True
+for layer in base.layers[:-30]:
+    layer.trainable = False
+model.compile(tf.keras.optimizers.Adam(1e-4), "sparse_categorical_crossentropy", ["accuracy"])
+h2 = model.fit(X_tr, y_tr, validation_data=(X_va, y_va), epochs=5, batch_size=64, verbose=2)
+
+pred = model.predict(X_te, batch_size=128).argmax(1)
+acc = accuracy_score(y_te, pred)
+f1 = f1_score(y_te, pred, average="macro")
+print(f"MobileNetV2 transfer  test acc={acc:.4f}  macro-F1={f1:.4f}")
+
+ConfusionMatrixDisplay(confusion_matrix(y_te, pred), display_labels=CLASS_NAMES).plot(
+    xticks_rotation=45, colorbar=False)
+plt.tight_layout()
+plt.savefig("results/confusion_transfer.png", dpi=150)
+plt.close()
+
+hist = {k: h1.history[k] + h2.history[k] for k in h1.history}
+plt.figure(figsize=(6, 3.5))
+plt.plot(hist["accuracy"], label="train")
+plt.plot(hist["val_accuracy"], label="val")
+plt.xlabel("epoch"); plt.ylabel("accuracy"); plt.legend(); plt.tight_layout()
+plt.savefig("results/training_curve.png", dpi=150)
+plt.close()
+with open("results/metrics_transfer.txt", "w") as f:
+    f.write(f"test_accuracy={acc:.4f}\nmacro_f1={f1:.4f}\n")
