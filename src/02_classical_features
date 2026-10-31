@@ -1,0 +1,56 @@
+# BEN 2026-11-01
+# Change aim: Classify blood cells with handcrafted features and a Random Forest.
+# File: 02_classical_features.py
+"""Step 2: classical pipeline: Otsu segmentation + handcrafted features + Random Forest."""
+import os
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from skimage import color, filters, measure, feature
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
+from common import load_split, CLASS_NAMES
+
+os.makedirs("results", exist_ok=True)
+
+
+# BEN 2026-11-01
+# Change aim: Compute shape, colour and texture features for one cell image.
+# File: 02_classical_features.py
+# Function: features
+def features(img):
+    gray = color.rgb2gray(img)
+    sm = filters.gaussian(gray, sigma=1)
+    mask = sm < filters.threshold_otsu(sm)          # cells are darker than background
+    lab = measure.label(mask)
+    props = [p for p in measure.regionprops(lab) if p.area >= 10]  # drop tiny specks
+    area = max((p.area for p in props), default=0)
+    ecc = max(props, key=lambda p: p.area).eccentricity if props else 0.0
+    solidity = max(props, key=lambda p: p.area).solidity if props else 0.0
+    colour = np.concatenate([img.reshape(-1, 3).mean(0), img.reshape(-1, 3).std(0)])
+    hist = np.histogram(gray, bins=8, range=(0, 1))[0] / gray.size
+    lbp = feature.local_binary_pattern((gray * 255).astype(np.uint8), 8, 1, "uniform")
+    lbp_hist = np.histogram(lbp, bins=10, range=(0, 10))[0] / lbp.size
+    return np.concatenate([[area, mask.mean(), len(props), ecc, solidity], colour, hist, lbp_hist])
+
+
+X_tr, y_tr = load_split("train")
+X_te, y_te = load_split("test")
+F_tr = np.array([features(i) for i in X_tr])
+F_te = np.array([features(i) for i in X_te])
+
+clf = RandomForestClassifier(n_estimators=300, class_weight="balanced", n_jobs=-1, random_state=0)
+clf.fit(F_tr, y_tr)
+pred = clf.predict(F_te)
+acc = accuracy_score(y_te, pred)
+f1 = f1_score(y_te, pred, average="macro")
+print(f"classical RF  test acc={acc:.4f}  macro-F1={f1:.4f}")
+
+ConfusionMatrixDisplay(confusion_matrix(y_te, pred), display_labels=CLASS_NAMES).plot(
+    xticks_rotation=45, colorbar=False)
+plt.tight_layout()
+plt.savefig("results/confusion_classical.png", dpi=150)
+plt.close()
+with open("results/metrics_classical.txt", "w") as f:
+    f.write(f"test_accuracy={acc:.4f}\nmacro_f1={f1:.4f}\n")
