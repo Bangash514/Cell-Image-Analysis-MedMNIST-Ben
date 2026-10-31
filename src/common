@@ -1,0 +1,23 @@
+# BEN 2026-11-01
+# Change aim: Load the public BloodMNIST splits as numpy arrays for all steps.
+# File: common.py
+"""Shared helpers: load BloodMNIST (public cell-image dataset) as numpy arrays."""
+import numpy as np
+from medmnist import BloodMNIST
+
+CLASS_NAMES = [
+    "basophil", "eosinophil", "erythroblast", "immature granulocyte",
+    "lymphocyte", "monocyte", "neutrophil", "platelet",
+]
+
+
+# BEN 2026-11-01
+# Change aim: Return one dataset split and download it on first use.
+# File: common.py
+# Function: load_split
+def load_split(split: str, size: int = 64, root: str = "data"):
+    """Return (images uint8 [N,H,W,3], labels int [N]). Downloads on first use."""
+    import os
+    os.makedirs(root, exist_ok=True)
+    ds = BloodMNIST(split=split, download=True, size=size, root=root)
+    return ds.imgs, ds.labels.ravel().astype(int)
